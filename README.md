@@ -16,7 +16,7 @@ Have a look at  `docker-compose.yaml`  file for more info.
 ![Gazebo Container](/screenshots/Gazebo_Container.png)
 
 ### Robot Container
-![Robot_Container](/screenshots/Gazebo_Container.png)
+![Robot_Container](/screenshots/Robot_Container.png)
 
 ### Google Cartographer Cloud Container
 ![Google Cartographer Cloud Container](/screenshots/GC_Cloud_Container.png)
