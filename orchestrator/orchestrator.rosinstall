@@ -1,0 +1,2 @@
+- git: {local-name: nimbro_network, uri: 'https://github.com/AIS-Bonn/nimbro_network.git'}
+- git: {local-name: turtlebot3_simulations, uri: 'https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git'}

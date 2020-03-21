@@ -1,0 +1,147 @@
+<!--
+	Name: 	mira-I	
+	Robot:	MIR-A1 
+	Date:	10.10.2019
+	Author:	Simon Galle
+-->
+
+
+
+<robot name="mira-I" xmlns:xacro="http://ros.org/wiki/xacro">
+    <xacro:arg name="path_default" default="/simulator/catkin_ws/src/multiple-agents-launcher/data/"/>
+    <xacro:arg name="gpu" default="false"/>
+    <xacro:property name="gpu" value="$(arg gpu)" />
+    <xacro:property name="path_default" value="$(arg path_default)" />
+    <xacro:property name="base_link" value="base_link" />
+    
+    <xacro:macro name="default_inertial" params="mass">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01" />
+    </inertial>
+  </xacro:macro>
+
+  <xacro:include filename="${path_default}/urdf/mira-base2_gaz.urdf.xacro"/>
+  <mira-base parent="${base_link}" name="mira-base">
+    <origin xyz="0 0 0.4" rpy="0 0 0" />
+  </mira-base>
+
+    <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
+  <VLP-16 parent="${base_link}" name="velodyne" topic="/velodyne_points" hz="10" samples="440" gpu="${gpu}">
+    <origin xyz="0.1 0. 0.3078" rpy="0. 0. 3.141593" />
+  </VLP-16>
+
+    <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
+  <VLP-16 parent="${base_link}" name="velodyne2" topic="/velodyne_points2" hz="10" samples="440" gpu="${gpu}">
+     <origin xyz="-0.105 0.0 0.25" rpy="0. -1.57 0" /><!--0. 1.045 3.14-->
+  </VLP-16>
+
+ 
+
+
+<link name="imu_link">
+  <inertial>
+    <mass value="0.001"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.0001"/>
+  </inertial>
+  <visual>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <box size="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+  <collision>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <box size=".001 .001 .001"/>
+    </geometry>
+  </collision>
+</link>
+ <joint name="imu_joint" type="fixed">
+    <axis xyz="1 0 0"/> <!-- 0 1 0 -->
+    <origin xyz="0.03 0 0.18" />
+    <parent link="${base_link}"/>
+    <child link="imu_link"/>
+  </joint>
+
+
+
+  <!-- <link name="${base_link}"/> -->
+
+  <link name="link_nuc">
+    <visual>
+      <origin xyz="0.105 0.0 0.18" rpy="0. 1.571 0."/>
+      <geometry>
+        <box size="0.1 0.1 0.04" />
+      </geometry>
+      <material name="orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0.105 0.0 0.18" rpy="0. 1.571 0."/>
+      <geometry>
+        <box size="0.1 0.1 0.04" />
+      </geometry>
+    </collision>
+    <xacro:default_inertial mass="0.5"/>
+  </link>
+    <joint name="joint_nuc" type="fixed">
+    <parent link="${base_link}" />
+    <child link="link_nuc" />
+  </joint>
+
+  <link name="link_barA">
+    <visual>
+      <origin xyz="0.063 0. 0.1625" />
+      <geometry>
+        <box size="0.04 0.04 0.295" />
+      </geometry>
+      <material name="grey"/>
+    </visual>
+    <collision>
+      <origin xyz="0.063 0. 0.1625" />
+      <geometry>
+        <box size="0.04 0.04 0.295" />
+      </geometry>
+    </collision>
+    <xacro:default_inertial mass="0.7"/>
+  </link>
+    <joint name="joint_barA" type="fixed">
+    <parent link="${base_link}" />
+    <child link="link_barA" />
+  </joint>
+  <link name="link_barB">
+    <visual>
+      <origin xyz="-0.022 0. 0.29" />
+      <geometry>
+        <box size="0.17 0.04 0.04" />
+      </geometry>
+      <material name="grey"/>
+    </visual>
+    <collision>
+      <origin xyz="-0.022 0. 0.29" />
+      <geometry>
+        <box size="0.17 0.04 0.04" />
+      </geometry>
+    </collision>
+    <xacro:default_inertial mass="0.3"/>
+  </link>
+    <joint name="joint_barB" type="fixed">
+    <parent link="${base_link}" />
+    <child link="link_barB" />
+  </joint>
+    <!-- Gazebo plugin for ROS Control -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/</robotNamespace>
+    </plugin>
+    <plugin name="imu_plugin" filename="libgazebo_ros_imu.so">
+      <alwaysOn>true</alwaysOn>
+      <bodyName>imu_link</bodyName>
+      <topicName>imu_data</topicName>
+      <serviceName>imu_service</serviceName>
+      <gaussianNoise>0.0</gaussianNoise>
+      <updateRate>20.0</updateRate>
+    </plugin>
+  </gazebo>
+</robot>

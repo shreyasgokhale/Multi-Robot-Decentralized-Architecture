@@ -1,0 +1,27 @@
+<!-- Copyright (c) Microsoft Corporation. All rights reserved.
+     Licensed under the MIT License. -->
+<!-- This is for our simulator TO Remote robots -->
+
+<launch>
+    <arg name="ns" />
+    <arg name="target"  />
+    <arg name="target_port" />
+    <arg name="sender_name" default="tcp_sender" />
+    <arg name="protocol" default="tcp" />
+
+    <!-- The Message sender node -->
+    <node name="$(arg sender_name)" pkg="nimbro_topic_transport" type="$(arg protocol)_sender" output="screen" >
+
+        <!-- The destination host name or IP address -->
+        <param name="destination_addr" value="$(arg target)" />
+        <param name="destination_port" value="$(arg target_port)" />
+
+        <!-- Load the list of topics from a YAML file -->
+        <rosparam command="load" file="$(find nimbro-simulator)/launch/topics_to_agent.yaml" />
+
+        <remap from="/scan" to="/$(arg ns)/scan" />
+        <remap from="/odom" to="/$(arg ns)/odom" />
+        <remap from="/imu" to="/$(arg ns)/imu" />
+        <remap from="/odom_tf" to="/$(arg ns)/odom_tf" />
+    </node>
+</launch>

@@ -1,0 +1,98 @@
+FROM shreyasgokhale/google-cartographer-grpc
+
+# Install NIMBRO requirements
+RUN apt-get update \
+    && apt-get install -y \
+    qt4-qmake \
+    libqt4-dev \
+    && rm -rf /var/lib/apt/lists/*
+#END NIMBRO
+
+# NIMBRO installation
+RUN git clone https://github.com/AIS-Bonn/nimbro_network /catkin_robot/src/ \
+    && cd /catkin_robot/src/ \
+    && git checkout 190761d69c0a67ef6fcc1ce15c69ee6765fbc1cf \
+    # remove unused packages ## For now, might need some packages later
+    && rm -rf nimbro_cam_transport \
+    && rm -rf nimbro_log_transport \
+    && rm -rf nimbro_service_transport \
+    && rm -rf tf_throttle
+
+# Turtlebot Installation
+RUN git clone https://github.com/ROBOTIS-GIT/turtlebot3 /catkin_robot/src/turtlebot3
+RUN git clone https://github.com/ROBOTIS-GIT/turtlebot3_simulations /catkin_robot/src/turtlebot3_simulations
+
+COPY ./custom_catkin_packages/agent-starter /catkin_robot/src/agent-starter
+COPY ./custom_catkin_packages/nimbro-agent /catkin_robot/src/nimbro-agent
+
+
+# Copy project scripts
+COPY scripts/install_deps.sh /install_deps.sh 
+RUN chmod +x /install_deps.sh 
+
+# Update apts for rosdep update
+RUN apt-get update -y
+RUN /install_deps.sh "/catkin_robot"
+
+# Compile Project
+COPY scripts/compile_project.sh /compile_project.sh 
+RUN chmod +x /compile_project.sh 
+RUN /compile_project.sh "/catkin_robot"
+
+WORKDIR /catkin_robot/
+
+# Turtlebot Cartographer
+COPY scripts/compile_project_isolated.sh /compile_project_isolated.sh 
+RUN chmod +x /compile_project_isolated.sh 
+RUN git clone https://github.com/googlecartographer/cartographer_turtlebot /catkin_ws/src/cartographer_turtlebot
+RUN /compile_project_isolated.sh "/catkin_ws"
+
+# Postinstall Copy
+COPY launches/agent-cartographer/agent_cartographer.launch /catkin_ws/install_isolated/share/cartographer_ros/launch/agent_cartographer.launch
+COPY launches/agent-cartographer/agent_server.lua /catkin_ws/install_isolated/share/cartographer_ros/configuration_files/agent_server.lua 
+COPY launches/agent-cartographer/agent_node.lua /catkin_ws/install_isolated/share/cartographer_ros/configuration_files/agent_node.lua
+COPY launches/agent-cartographer/cloud_server.lua /catkin_ws/install_isolated/share/cartographer_ros/configuration_files/cloud_server.lua 
+
+#### Updated VNC by Shreyas
+ENV DISPLAY=:1 \
+    VNC_PORT=5901 \
+    NO_VNC_PORT=6901
+
+ENV HOME=/home \
+    TERM=xterm \
+    STARTUPDIR=/dockerstartup \
+    INST_SCRIPTS=/home/install \
+    NO_VNC_HOME=/home/noVNC \
+    DEBIAN_FRONTEND=noninteractive \
+    VNC_COL_DEPTH=24 \
+    VNC_RESOLUTION=1280x1024 \
+    VNC_PW=vncpassword \
+    VNC_VIEW_ONLY=false
+
+WORKDIR $HOME
+
+### Add all install scripts for further steps
+ADD ./vnc_files/common/install/ $INST_SCRIPTS/
+ADD ./vnc_files/ubuntu/install/ $INST_SCRIPTS/
+RUN find $INST_SCRIPTS -name '*.sh' -exec chmod a+x {} +
+
+### Install some common tools
+RUN $INST_SCRIPTS/tools.sh
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+
+
+### Install xvnc-server & noVNC - HTML5 based VNC viewer
+RUN $INST_SCRIPTS/tigervnc.sh
+RUN $INST_SCRIPTS/no_vnc.sh
+
+### Install xfce UI
+RUN $INST_SCRIPTS/xfce_ui.sh
+ADD ./vnc_files/common/xfce/ $HOME/
+
+### configure startup
+RUN $INST_SCRIPTS/libnss_wrapper.sh
+ADD ./vnc_files/common/scripts $STARTUPDIR
+RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
+
+ENTRYPOINT ["/dockerstartup/vnc_startup.sh"]
+CMD ["--wait"]

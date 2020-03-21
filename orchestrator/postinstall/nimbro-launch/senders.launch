@@ -1,0 +1,23 @@
+<launch>
+	<include file="$(find simulator_nimbro)/launch/outgoing.launch" >
+		<arg name="target" value="robot-nimbro-0" />
+		<arg name="target_port" value="17000" />
+		<arg name="ns" value="tb3_0" />
+		<arg name="sender_name" value="tcp_sender0" />
+		<arg name="protocol" value="tcp" />
+	</include>
+	<include file="$(find simulator_nimbro)/launch/outgoing.launch" >
+		<arg name="target" value="robot-nimbro-1" />
+		<arg name="target_port" value="17000" />
+		<arg name="ns" value="tb3_1" />
+		<arg name="sender_name" value="tcp_sender1" />
+		<arg name="protocol" value="tcp" />
+	</include>
+	<include file="$(find simulator_nimbro)/launch/outgoing.launch" >
+		<arg name="target" value="robot-nimbro-2" />
+		<arg name="target_port" value="17000" />
+		<arg name="ns" value="tb3_2" />
+		<arg name="sender_name" value="tcp_sender2" />
+		<arg name="protocol" value="tcp" />
+	</include>
+</launch>

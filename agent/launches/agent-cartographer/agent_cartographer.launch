@@ -1,0 +1,53 @@
+<launch>
+<param name="/use_sim_time" value="true" />
+
+    <group>
+        <env name="ROS_MASTER_URI" value="http://localhost:11811" />
+
+        <!-- Local GRPC Server for Agent. This collects data -->
+        <node name="cartographer_grpc_cloud_local" pkg="cartographer_ros"
+            type="cartographer_grpc_server.sh" args="
+                -configuration_directory $(find cartographer_ros)/configuration_files
+                -configuration_basename agent_server.lua">
+        </node>
+    
+
+        <!-- Change server_address field in cloud_server.lua as well -->
+        <node name="cartographer_node" pkg="cartographer_ros"
+            type="cartographer_grpc_node" args="
+                -configuration_directory $(find cartographer_ros)/configuration_files
+                -configuration_basename agent_node.lua
+                -server_address 0.0.0.0:50052
+                -client_id 2"
+            output="screen">
+        </node>
+
+        <node name="cartographer_occupancy_grid_node" pkg="cartographer_ros"
+        type="cartographer_occupancy_grid_node" args="-resolution 0.025" />
+    </group>
+
+    
+    <group>
+        <env name="ROS_MASTER_URI" value="http://localhost:11111" />
+        <!-- Server lua -->
+        <node name="cartographer_grpc_cloud" pkg="cartographer_ros"
+            type="cartographer_grpc_server.sh" args="
+                -configuration_directory $(find cartographer_ros)/configuration_files
+                -configuration_basename cloud_server.lua">
+        </node>
+
+        <!-- Server Cartographer lua -->
+        <node name="cartographer_grpc_bridge_cloud" pkg="cartographer_ros"
+            type="cartographer_grpc_node" args="
+                -configuration_directory $(find cartographer_ros)/configuration_files
+                -configuration_basename agent_node.lua
+                -server_address cloud-server:55555
+                -client_id 3"
+            output="screen">
+        </node>
+            <node name="rviz_3" pkg="rviz" type="rviz" required="false"
+            args="-d $(find cartographer_ros)/configuration_files/demo_2d.rviz" />
+    </group>
+
+</launch>
+

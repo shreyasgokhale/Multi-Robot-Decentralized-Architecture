@@ -1,0 +1,73 @@
+<launch>
+  <arg name="drive_name" doc=""/> 
+	<arg name="home_path" default="/simulator/catkin_ws/src/multiple-agents-launcher"/>
+  <arg name="path_default" default="$(arg home_path)/data" doc=""/> 
+  <arg name="model" default="$(arg path_default)/urdf/mira-I_gaz.urdf.xacro"/>
+  <arg name="rvizconfig" default="$(arg path_default)/rviz/mira-I_gaz.rviz" />
+  <!-- <arg name="lua_file" default="mir_points2_odom.lua"/> -->
+<!-- 
+  <arg name="topic_horizontal_points" default="velodyne_points"/>	
+	<arg name="topic_vertical_points" default="velodyne_points2"/>
+  <arg name="topic_odom" default="/r2d2_diff_drive_controller/odom"/>	
+  <arg name="topic_cmdVel" default="/r2d2_diff_drive_controller/cmd_vel"/>
+  <arg name="topic_imu" default="/imu_data"/> -->
+  
+
+  <!-- Gazebo Parameters -->
+  <arg name="use_sim_time" default="true"/>
+  <arg name="paused" default="false"/>
+  <arg name="use_load_r2d2_ctrl" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="start_rosbridge" default="true" doc=""/>
+  <arg name="verbose" default="false"/>
+  <arg name="world_name" default="fokus2f"/>
+
+  <arg name="gpu" default="false"/>
+
+
+
+  <!-- Nodes -->
+  
+  <!-- tf -->
+  <node pkg="tf" type="static_transform_publisher" name="link_map2base" args="0 0 0 0 0 0 1 map base_link 100" />
+
+  <!-- Start gazebo and load the world -->  
+  <include file="$(find gazebo_ros)/launch/empty_world.launch" >
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="headless" value="$(arg headless)"/>
+    <arg name="debug" value="$(arg debug)"/>
+    <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="world_name" value="$(arg world_name)"/>
+  </include>
+
+  <!-- Load the robot model -->
+  <param name="robot_description" command="$(find xacro)/xacro.py $(arg model) gpu:=$(arg gpu)" />
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_model" args="-urdf -param /robot_description -model $(arg model)"/>
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="30.0" />
+  </node>
+
+<!-- Start cartographer -->
+<!-- <node name="cartographer_node" pkg="cartographer_ros"
+    type="cartographer_node" args="
+    -configuration_directory $(arg path_default)/configurations
+    -configuration_basename $(arg lua_file)"
+    output="screen" required="false">
+    <remap from="points2_1" to="$(arg topic_horizontal_points)" />
+    <remap from="points2_2" to="$(arg topic_vertical_points)" />
+    <remap from="scan_1" to="scan" />
+    <remap from="scan_2" to="scan2" />
+    <remap from="imu" to="$(arg topic_imu)" />
+    <remap from="odom" to="$(arg topic_odom)" />
+</node>
+<node name="cartographer_occupancy_grid_node" pkg="cartographer_ros" type="cartographer_occupancy_grid_node" args="-resolution 0.025" /> -->
+
+
+  <!-- rViz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+
+</launch>

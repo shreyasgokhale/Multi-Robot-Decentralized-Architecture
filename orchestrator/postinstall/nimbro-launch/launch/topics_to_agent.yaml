@@ -1,0 +1,4 @@
+topics:
+  - name: "/odom"
+  - name: "/scan" 
+  - name: "/clock"

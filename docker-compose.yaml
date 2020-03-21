@@ -1,0 +1,165 @@
+version: '2'
+
+# Network Config
+networks:
+  simulation_bridge_network:
+    driver: bridge
+
+# Containers
+services:
+  # Gazebo Container
+  custom-gazebo-base:
+    build:
+      context: ./gazebo-image/
+    image: gazebo-base
+  # Cartographer Cloud 
+  cartographer-cloud-server:
+    build:
+      context: ./cloud/
+      dockerfile: Dockerfile-cloud
+    privileged: true
+    command: ["bash", "-c", "/start_server.sh"]
+    volumes:
+      - ./cloud/cloud-cartographer/postinstall/cloud_cartographer.launch:/catkin_ws/install_isolated/share/cartographer_ros/launch/cloud_cartographer.launch
+    networks:
+      simulation_bridge_network:
+        aliases:
+        - "cloud-server"
+    ports:
+      -  "11311"
+      - "5910:5901"
+      - "6910:6901"
+  # Simulation organizer
+  simulator:
+    image: "orchestrator"
+    build:   
+      context: ./orchestrator/
+      dockerfile: Dockerfile-orchestrator
+    depends_on:
+      - custom-gazebo-base
+      - cartographer-cloud-server
+    environment: 
+      - ROS_MASTER_URI=http://localhost:11311
+      - LOCAL_ROBOT_NAMESPACE=tb3
+      - ROBOT_TARGET_PREFIX=robot-nimbro-
+      - ROBOT_COUNT=3
+      - PORT_BASE=17000
+      - SIMULATOR_THREAD_COUNT=4
+      - VNC_PW=vncpassword
+      - GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:/simulator/catkin_ws/src/multiple-agents-launcher/data/world
+      - TURTLEBOT3_MODEL=waffle_pi
+    command: ["/bin/bash", "-c", "cd /simulator/catkin_ws && 
+                                  source devel/setup.bash &&
+                                  roslaunch multiple-agents-launcher simulation.launch \
+                                  robot_count:=$${ROBOT_COUNT} \
+                                  port_base:=$${PORT_BASE} \ 
+                                  robot_target_prefix:=$${ROBOT_TARGET_PREFIX} \
+                                  local_robot_namespace:=$${LOCAL_ROBOT_NAMESPACE}"]
+    volumes:
+      - ./orchestrator/postinstall/simulation.launch:/simulator/catkin_ws/src/multiple-agents-launcher/launch/simulation.launch
+      - ./orchestrator/postinstall/multiple-agents-launcher/launch/multi_turtlebot3_modified.launch:/simulator/catkin_ws/src/multiple-agents-launcher/launch/multi_turtlebot3_modified.launch
+      - ./orchestrator/postinstall/multiple-agents-launcher/scripts/simulator_starter.sh:/simulator/catkin_ws/src/multiple-agents-launcher/scripts/simulator_starter.sh
+      # - ./orchestrator/postinstall/data/:/simulator/catkin_ws/src/multiple-agents-launcher/data/
+      - ./orchestrator/postinstall/nimbro-launch/launch:/simulator/catkin_ws/src/nimbro-simulator/launch
+      - ./orchestrator/postinstall/nimbro-launch/scripts:/simulator/catkin_ws/src/nimbro-simulator/scripts
+    ports:
+    - "17000-17005"
+    - "5925:5901"
+    - "6925:6901"
+    networks:
+      simulation_bridge_network:
+        aliases:
+        - "simulator-nimbro-0"
+        - "simulator-nimbro-1"
+        - "simulator-nimbro-2"
+  # Robots
+  robot-0:
+    stdin_open: true
+    tty: true
+    image: "agent"
+    depends_on: 
+      - simulator
+    build:   
+      context: ./agent/
+      dockerfile: Dockerfile-agent
+    environment: 
+      # - ROS_MASTER_URI=http://localhost:11311
+      - ROBOT_NAME=tb3_0
+      - SIMULATOR_NIMBRO_TARGET=simulator-nimbro-0
+      - SIMULATOR_NIMBRO_PORT=17000
+      - VERBOSE="True"
+      - TURTLEBOT3_MODEL=waffle_pi
+    command: ["/bin/bash", "-c", "/start_agent.sh"]
+    volumes:
+      - ./mounts/agent/nimbro.launch:/catkin_robot/src/agent-starter/launch/nimbro.launch
+      - ./mounts/agent/cartographer.launch:/catkin_robot/src/agent-starter/launch/cartographer.launch
+      - ./mounts/agent/cartographer_turtlebot.lua:/catkin_robot/src/agent-starter/configuration_files/cartographer_turtlebot.lua
+      - ./mounts/agent/scripts/start_agent.sh:/start_agent.sh
+      - ./mounts/agent/agent-cartographer/agent_cartographer.launch:/catkin_robot/src/agent-starter/launch/agent_cartographer.launch
+      - ./mounts/agent/agent-cartographer/agent_node.lua:/catkin_ws/install_isolated/share/cartographer_ros/configuration_files/agent_node.lua
+    ports:
+      - "17000"
+      - "5950:5901"
+      - "6950:6901"
+    networks:
+      simulation_bridge_network:
+        aliases:
+        - "robot-nimbro-0"
+  robot-1:
+    stdin_open: true
+    tty: true
+    depends_on: 
+      - robot-0
+    image: "agent"
+    environment: 
+      - ROS_MASTER_URI=http://localhost:11311
+      - ROBOT_NAME=tb3_1
+      - SIMULATOR_NIMBRO_TARGET=simulator-nimbro-1
+      - SIMULATOR_NIMBRO_PORT=17001
+      - VERBOSE="True"
+      - TURTLEBOT3_MODEL=waffle_pi
+    command: ["/bin/bash", "-c", "/start_agent.sh"]
+    volumes:
+      - ./mounts/agent/nimbro.launch:/catkin_robot/src/agent-starter/launch/nimbro.launch
+      - ./mounts/agent/cartographer.launch:/catkin_robot/src/agent-starter/launch/cartographer.launch
+      - ./mounts/agent/cartographer_turtlebot.lua:/catkin_robot/src/agent-starter/configuration_files/cartographer_turtlebot.lua
+      - ./mounts/agent/scripts/start_agent.sh:/start_agent.sh
+      - ./mounts/agent/agent-cartographer/agent_cartographer.launch:/catkin_robot/src/agent-starter/launch/agent_cartographer.launch
+      - ./mounts/agent/agent-cartographer/agent_node.lua:/catkin_ws/install_isolated/share/cartographer_ros/configuration_files/agent_node.lua
+    ports:
+      - "17000"
+      - "5951:5901"
+      - "6951:6901"
+    networks:
+      simulation_bridge_network:
+        aliases:
+        - "robot-nimbro-1"
+  robot-2:
+    stdin_open: true
+    tty: true
+    depends_on: 
+      - robot-0
+    image: "agent"
+    environment: 
+      - ROS_MASTER_URI=http://localhost:11311
+      - ROBOT_NAME=tb3_2
+      - SIMULATOR_NIMBRO_TARGET=simulator-nimbro-2
+      - SIMULATOR_NIMBRO_PORT=17002
+      - VERBOSE="True"
+      - TURTLEBOT3_MODEL=waffle_pi
+    command: ["/bin/bash", "-c", "/start_agent.sh"]
+    volumes:
+      - ./mounts/agent/nimbro.launch:/catkin_robot/src/agent-starter/launch/nimbro.launch
+      - ./mounts/agent/cartographer.launch:/catkin_robot/src/agent-starter/launch/cartographer.launch
+      - ./mounts/agent/cartographer_turtlebot.lua:/catkin_robot/src/agent-starter/configuration_files/cartographer_turtlebot.lua
+      - ./mounts/agent/scripts/start_agent.sh:/start_agent.sh
+      - ./mounts/agent/agent-cartographer/agent_cartographer.launch:/catkin_robot/src/agent-starter/launch/agent_cartographer.launch
+      - ./mounts/agent/agent-cartographer/agent_node.lua:/catkin_ws/install_isolated/share/cartographer_ros/configuration_files/agent_node.lua
+    ports:
+      - "17000"
+      - "5952:5901"
+      - "6952:6901"
+    networks:
+      simulation_bridge_network:
+        aliases:
+        - "robot-nimbro-2"
